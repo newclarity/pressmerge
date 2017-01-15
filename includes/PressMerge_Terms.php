@@ -44,7 +44,7 @@ class PressMerge_Terms {
 
 		$changes= $this->find_changed_terms( $staging_hash, PressMerge::STAGE_PREFIX, PressMerge::LIVE_PREFIX );
 
-		$changes[ 'not_in_new' ] = $this->find_missing_terms( $staging_hash, PressMerge::STAGE_PREFIX, PressMerge::LIVE_PREFIX );
+		$changes[ 'omitted' ] = $this->find_omitted_terms( $staging_hash, PressMerge::STAGE_PREFIX, PressMerge::LIVE_PREFIX );
 
 		$changes = array_merge( $stats, $changes );
 
@@ -59,7 +59,7 @@ class PressMerge_Terms {
 	 *
 	 * @return array|string
 	 */
-	function find_missing_terms( $hash, $prefix_new, $prefix_existing ) {
+	function find_omitted_terms( $hash, $prefix_new, $prefix_existing ) {
 		$missing = array();
 		foreach( $hash as $index => $title ) {
 			$term_id = $this->get_term_id_from_index( $index );
@@ -225,14 +225,10 @@ class PressMerge_Terms {
 	 */
 	function get_terms_hash( $prefix ) {
 		$key = "terms_hash:{$prefix}";
-		$terms_hash = PressMerge::cache_hashes()
+		$terms_hash = PressMerge()->cache_hashes()
 			? get_transient( "terms_hash:{$prefix}" )
 			: null;
 		if ( ! $terms_hash ) {
-			/**
-			 * @var wpdb
-			 */
-			global $wpdb;
 			$rows = $this->get_terms( $prefix );
 			$terms_hash = array();
 			foreach( $rows as $row ) {
@@ -395,7 +391,7 @@ class PressMerge_Terms {
 				/**
 				 * We will add it back at the end of the loop.
 				 */
-				unset( $added_terms[ 'relationships' ][ $tax_index ] );
+				unset( $added_terms[ 'relationships' ][ $rel_index ] );
 
 				if ( ! isset( $relationship->object_id ) ) {
 					trigger_error( sprintf( __( 'Unexpected: \$term->relationships does not contain an ->\$object_id', 'pressmerge' ) ) );

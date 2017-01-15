@@ -48,7 +48,7 @@ class PressMerge_Posts {
 
 		$changes= $this->find_changed_posts( $staging_hash, PressMerge::STAGE_PREFIX, PressMerge::LIVE_PREFIX );
 
-		$changes[ 'not_in_new' ] = $this->find_missing_posts( $staging_hash, PressMerge::STAGE_PREFIX, PressMerge::LIVE_PREFIX );
+		$changes[ 'omitted' ] = $this->find_omitted_posts( $staging_hash, PressMerge::STAGE_PREFIX, PressMerge::LIVE_PREFIX );
 
 		$changes = array_merge( $stats, $changes );
 
@@ -63,7 +63,7 @@ class PressMerge_Posts {
 	 *
 	 * @return array|string
 	 */
-	function find_missing_posts( $hash, $prefix_new, $prefix_existing ) {
+	function find_omitted_posts( $hash, $prefix_new, $prefix_existing ) {
 		$missing = array();
 		foreach( $hash as $index => $title ) {
 			$post_id = $this->get_post_id_from_index( $index );
@@ -235,14 +235,10 @@ class PressMerge_Posts {
 	 */
 	function get_posts_hash( $prefix ) {
 		$key = "posts_hash:{$prefix}";
-		$posts_hash = PressMerge::cache_hashes()
+		$posts_hash = PressMerge()->cache_hashes()
 			? get_transient( "posts_hash:{$prefix}" )
 			: null;
 		if ( ! $posts_hash ) {
-			/**
-			 * @var wpdb
-			 */
-			global $wpdb;
 			$rows = $this->get_posts( $prefix );
 			$posts_hash = array();
 			foreach( $rows as $row ) {

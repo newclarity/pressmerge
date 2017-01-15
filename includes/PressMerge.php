@@ -4,7 +4,7 @@ class PressMerge {
 	const LIVE_PREFIX = 'wp';
 	const STAGE_PREFIX = '_staging';
 	const LIVE_UPLOADS = 'wp-content/uploads';
-	const STAGE_UPLOADS = '../../schiffpodcast/www/wp-content/uploads';
+	const STAGE_UPLOADS = 'wp-content/staging-uploads';
 	const MERGE_FILENAME = 'pressmerge.txt';
 //	const LIVE_PREFIX =  '_staging';
 //	const STAGE_PREFIX = 'wp';
@@ -17,7 +17,7 @@ class PressMerge {
 	/**
 	 * @var bool
 	 */
-	private static $_cache_hashes = true;
+	private static $_cache_hashes = false;
 
 	/**
 	 *
@@ -75,12 +75,18 @@ class PressMerge {
 	function fixup_changes( &$changes ) {
 		$p = new PressMerge_Posts();
 		$t = new PressMerge_Terms();
-		$m = new PressMerge_Media();
+		$m = new PressMerge_Files();
 
+		$changes[ 'files' ] = $m->fixup_added_files( $changes[ 'file' ][ 'added' ] );
 		$changes[ 'terms' ] = $t->fixup_added_terms( $changes[ 'terms' ][ 'added' ] );
 		$changes[ 'posts' ] = $p->fixup_added_posts( $changes[ 'posts' ][ 'added' ] );
-		//$changes[ 'media' ] = $m->fixup_added_media( $changes[ 'media' ][ 'added' ] );
 
+	}
+
+	/**
+	 *
+	 */
+	function merge() {
 	}
 
 	/**
@@ -88,13 +94,15 @@ class PressMerge {
 	 */
 	function build_changes() {
 
+		//PressMerge::cache_hashes( false );
+
 		$merge_filename = $this->merge_filename();
 
 		$terms__merge = new PressMerge_Terms();
 		$posts_merge  = new PressMerge_Posts();
-		$media_merge  = new PressMerge_Media();
+		$file_merge  = new PressMerge_Files();
 		$changes      = array(
-			//'media' => $media_merge->build_media_changes(),
+			'files' => $file_merge->build_file_changes(),
 			'terms' => $terms__merge->build_term_changes(),
 			'posts' => $posts_merge->build_post_changes(),
 		);
@@ -367,7 +375,7 @@ class PressMerge {
 	 *
 	 * @return bool
 	 */
-	static function cache_hashes( $do_cache = null ) {
+	function cache_hashes( $do_cache = null ) {
 
 		$cache_hashes = self::$_cache_hashes;
 
@@ -376,6 +384,75 @@ class PressMerge {
 		}
 
 		return $cache_hashes;
+
+	}
+
+	/**
+	 * @return string|null
+	 */
+	function uploads_basedir() {
+
+		$wp_uploads = wp_upload_dir();
+		return $wp_uploads[ 'basedir' ];
+
+	}
+
+	/**
+	 * Filters out files that begin with specified paths
+	 *
+	 * @param string[] $files
+	 * @param string[] $paths
+	 * @return string[]
+	 */
+	function filter_exclude_paths( $files, $paths ) {
+
+		$paths = implode( '|', $paths );
+
+		foreach( array_keys( $files ) as $filepath ) {
+
+			if ( ! preg_match( "#^({$paths})#", $filepath ) ) {
+
+				continue;
+			}
+
+			unset( $files[ $filepath ] );
+		}
+		return $files;
+	}
+
+	/**
+	 * Filters generated sizes of files that were uploaded to WordPress
+	 *
+	 * @param string[] $files
+	 * @return string[]
+	 */
+	function filter_original_files( $files ) {
+
+		foreach( array_keys( $files ) as $filepath ) {
+
+			if ( ! preg_match( '#^(.+)-\d{1,5}x\d{1,5}\.(png|jpg|jpeg|gif)$#', $filepath, $match ) ) {
+				continue;
+			}
+
+			$original_file = "{$match[ 1 ]}.{$match[ 2 ]}";
+
+			if ( ! isset( $files[ $original_file ] ) ) {
+				continue;
+			}
+
+			unset( $files[ $filepath ] );
+		}
+		return $files;
+	}
+
+	/**
+	 * @param string $filepath
+	 *
+	 * @return string
+	 */
+	function get_relative_path( $filepath, $directory = '.+/wp-content/uploads' ) {
+
+		return preg_replace( "#^{$directory}/(.+)$#", '$1', $filepath );
 
 	}
 
